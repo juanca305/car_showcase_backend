@@ -11,6 +11,7 @@ import {
   uploadImage,
   uploadMultipleImages,
   deleteCarImage,
+  replaceCarImage
 } from "../controllers/carController.js";
 import adminAuth from "../middleware/auth.js";
 
@@ -38,6 +39,10 @@ router.get("/:id", getCarById);
 router.post("/", adminAuth, createCar);
 router.put("/:id", adminAuth, updateCar);
 router.delete("/:id", adminAuth, deleteCar);
+
+// ✅ Replace a specific image
+router.put("/:id/images/:imageId", adminAuth, upload.single("image"), replaceCarImage);
+
 
 // ✅ Image upload routes
 router.post("/:id/images", adminAuth, upload.single("image"), uploadImage);

@@ -350,70 +350,58 @@ export const deleteCarImage = async (req, res) => {
   }
 };
 
+export const replaceCarImage = async (req, res) => {
+  try {
+    const { id: carId, imageId } = req.params;
 
+    // ✅ Validate IDs
+    if (
+      !mongoose.isValidObjectId(carId) ||
+      !mongoose.isValidObjectId(imageId)
+    ) {
+      return res.status(400).json({ message: "Invalid car or image ID" });
+    }
 
+    // ✅ Find car
+    const car = await Car.findById(carId);
+    if (!car) return res.status(404).json({ message: "Car not found" });
 
+    // ✅ Find image to replace
+    const imageToReplace = car.images.id(imageId);
+    if (!imageToReplace)
+      return res.status(404).json({ message: "Image not found in this car" });
 
-/******************************************************* */
+    // ✅ Delete old image from Cloudinary
+    const oldUrl = imageToReplace.url;
+    const publicId = oldUrl.split("/upload/")[1]?.split(".")[0];
+    if (publicId) {
+      try {
+        await cloudinary.uploader.destroy(publicId);
+      } catch (cloudErr) {
+        console.warn("⚠️ Cloudinary deletion failed:", cloudErr.message);
+      }
+    }
 
-// export const deleteCarImage = async (req, res) => {
-//   try {
-//     const { id: carId, imageId } = req.params;
+    // ✅ Upload new image
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: `car_showcase/${carId}`,
+      resource_type: "image",
+    });
 
-//     // // Validate car ID
-//     // if (!mongoose.isValidObjectId(carId)) {
-//     //   return res.status(400).json({ message: "Invalid car ID" });
-//     // }
+    // ✅ Replace the image info (keep same angle if exists)
+    imageToReplace.url = result.secure_url;
+    imageToReplace.angle = imageToReplace.angle || "unknown";
 
-//     // Validate car ID & image ID to prevent unnecessary queries
-//     if (
-//       !mongoose.isValidObjectId(carId) ||
-//       !mongoose.isValidObjectId(imageId)
-//     ) {
-//       return res.status(400).json({ message: "Invalid car or image ID" });
-//     }
+    await car.save();
 
-//     // Find car
-//     const car = await Car.findById(carId);
-//     if (!car) {
-//       return res.status(404).json({ message: "Car not found" });
-//     }
+    // ✅ Return updated car
+    return res.status(200).json({
+      message: "Image replaced successfully",
+      data: car,
+    });
+  } catch (err) {
+    console.error("replaceCarImage error:", err);
+    return res.status(500).json({ message: "Failed to replace image" });
+  }
+};
 
-//     // Find image by its Mongo _id inside car.images[]
-//     const imageToDelete = car.images.id(imageId);
-//     if (!imageToDelete) {
-//       return res.status(404).json({ message: "Image not found" });
-//     }
-
-//     /******************************************************* */
-//     // Derive public_id from Cloudinary URL
-//     //const publicId = imageToDelete.url.split("/").pop().split(".")[0];
-
-//     // Delete from Cloudinary
-//     //await cloudinary.uploader.destroy(`car_showcase/${carId}/${publicId}`);
-//     /************************************************************ */
-
-//     const imageUrl = imageToDelete.url;
-//     const publicId = imageUrl.split("/upload/")[1]?.split(".")[0];
-
-//     if (publicId) {
-//       try {
-//         await cloudinary.uploader.destroy(publicId);
-//       } catch (cloudErr) {
-//         console.warn("⚠️ Cloudinary deletion failed:", cloudErr.message);
-//       }
-//     }
-
-//     // Remove from MongoDB
-//     imageToDelete.deleteOne();
-//     await car.save();
-
-//     return res.status(200).json({
-//       message: "Image deleted successfully",
-//       data: car,
-//     });
-//   } catch (err) {
-//     console.error("deleteCarImage error:", err);
-//     return res.status(500).json({ message: "Failed to delete image" });
-//   }
-// };
