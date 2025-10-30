@@ -34,6 +34,9 @@ export const getCars = async (req, res) => {
 
     const query = {};
 
+    //Only return cars where isDeleted is not equal to true
+    query.isDeleted = { $ne: true };
+
     if (make) {
       // sanitize user input before using in RegExp
       const safe = escapeRegex(String(make));
@@ -174,18 +177,109 @@ export const updateCar = async (req, res) => {
   }
 };
 
+// export const deleteCar = async (req, res) => {
+//   try {
+//     const id = req.params.id;
+//     if (!mongoose.isValidObjectId(id))
+//       return res.status(400).json({ message: "Invalid id" });
+
+//     const car = await Car.findByIdAndDelete(id);
+//     if (!car) return res.status(404).json({ message: "Car not found" });
+
+//     return res.json({ message: "Deleted" });
+//   } catch (err) {
+//     console.error("deleteCar error:", err);
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+// Soft delete (previously deleteCar)
 export const deleteCar = async (req, res) => {
   try {
     const id = req.params.id;
     if (!mongoose.isValidObjectId(id))
       return res.status(400).json({ message: "Invalid id" });
 
-    const car = await Car.findByIdAndDelete(id);
+    // Find car
+    const car = await Car.findById(id);
     if (!car) return res.status(404).json({ message: "Car not found" });
 
-    return res.json({ message: "Deleted" });
+    // If already soft-deleted, return 204 or a message
+    if (car.isDeleted) {
+      return res
+        .status(200)
+        .json({ message: "Car already soft-deleted", data: car });
+    }
+
+    // Soft-delete: mark flags
+    car.isDeleted = true;
+    car.deletedAt = new Date();
+    await car.save();
+
+    return res.status(200).json({ message: "Car soft-deleted", data: car });
   } catch (err) {
     console.error("deleteCar error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Restore a car market as soft-deleted but still existing.
+export const restoreCar = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!mongoose.isValidObjectId(id))
+      return res.status(400).json({ message: "Invalid id" });
+
+    //const car = await Car.findById(id);
+    // includeDeleted: true -> triggers pre-find hook to skip adding { isDeleted: false }
+    const car = await Car.findOne({ _id: id, includeDeleted: true });
+
+    if (!car) return res.status(404).json({ message: "Car not found" });
+    if (!car.isDeleted) {
+      return res.status(400).json({ message: "Car is not deleted" });
+    }
+
+    car.isDeleted = false;
+    car.deletedAt = null;
+    await car.save();
+
+    return res.status(200).json({ message: "Car restored", data: car });
+  } catch (err) {
+    console.error("restoreCar error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// actually removes the DB record and optionally deletes Cloudinary images (useful for admins).
+export const permanentDeleteCar = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!mongoose.isValidObjectId(id))
+      return res.status(400).json({ message: "Invalid id" });
+
+    //const car = await Car.findById(id);
+    const car = await Car.findOne({ _id: id, includeDeleted: true });
+
+    if (!car) return res.status(404).json({ message: "Car not found" });
+
+    // delete images from Cloudinary (best-effort)
+    if (car.images && car.images.length) {
+      for (const img of car.images) {
+        try {
+          const publicId = img.url.split("/upload/")[1]?.split(".")[0];
+          if (publicId) await cloudinary.uploader.destroy(publicId);
+        } catch (e) {
+          console.warn("Failed deleting cloud image:", e?.message || e);
+        }
+      }
+    }
+
+    //await Car.findByIdAndDelete(id);
+    await Car.deleteOne({ _id: id });
+
+    return res.status(200).json({ message: "Car permanently deleted" });
+  } catch (err) {
+    console.error("permanentDeleteCar error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -404,4 +498,3 @@ export const replaceCarImage = async (req, res) => {
     return res.status(500).json({ message: "Failed to replace image" });
   }
 };
-
