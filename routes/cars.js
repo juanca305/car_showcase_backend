@@ -20,10 +20,10 @@ import adminAuth from "../middleware/auth.js";
 const router = express.Router();
 const upload = multer({ dest: "uploads/" }); // temp storage
 
-// ✅ GET all cars
+// GET all cars
 router.get("/", getCars);
 
-// ✅ GET distinct makes (must be before /:id)
+// GET distinct makes (must be before /:id)
 router.get("/makes/distinct", async (req, res) => {
   try {
     const makes = await Car.distinct("make");
@@ -34,31 +34,29 @@ router.get("/makes/distinct", async (req, res) => {
   }
 });
 
-// ✅ GET car by ID
+// GET car by ID
 router.get("/:id", getCarById);
 
-// ✅ CRUD operations
+// CRUD operations
 router.post("/", adminAuth, createCar);
-
 router.put("/:id", adminAuth, updateCar);
 
-// ✅ Restore a soft-deleted car
+// Restore a soft-deleted car
 router.put("/:id/restore", adminAuth, restoreCar);
 
-// ✅ Permanently delete a car (irreversible)
+// Permanently delete a car (irreversible)
 router.delete("/:id/permanent", adminAuth, permanentDeleteCar);
 
 router.delete("/:id", adminAuth, deleteCar);
 
-// ✅ Replace a specific image
+// Replace a specific image
 router.put("/:id/images/:imageId", adminAuth, upload.single("image"), replaceCarImage);
 
-
-// ✅ Image upload routes
+// Image upload routes
 router.post("/:id/images", adminAuth, upload.single("image"), uploadImage);
 router.post("/:id/images/multiple", adminAuth, upload.array("images", 10), uploadMultipleImages);
 
-// ✅ Delete specific image
+// Delete specific image
 router.delete("/:id/images/:imageId", adminAuth, deleteCarImage);
 
 export default router;
