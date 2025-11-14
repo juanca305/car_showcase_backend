@@ -123,13 +123,6 @@ export const getCarById = async (req, res) => {
 export const createCar = async (req, res) => {
   try {
     // Basic validation: require make, model, pricePerDay
-    // const { make, model, pricePerDay } = req.body;
-    // if (!make || !model || pricePerDay === undefined) {
-    //   return res
-    //     .status(400)
-    //     .json({ message: "make, model and pricePerDay are required" });
-    // }
-
     const { make, model, pricePerDay } = req.body;
     if (!make || !model || pricePerDay === undefined) {
       return res
