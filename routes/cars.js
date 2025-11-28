@@ -13,7 +13,8 @@ import {
   uploadImage,
   uploadMultipleImages,
   deleteCarImage,
-  replaceCarImage
+  replaceCarImage,
+  getModels
 } from "../controllers/carController.js";
 import adminAuth from "../middleware/auth.js";
 
@@ -23,16 +24,18 @@ const upload = multer({ dest: "uploads/" }); // temp storage
 // GET all cars
 router.get("/", getCars);
 
-// GET distinct makes (must be before /:id)
 router.get("/makes/distinct", async (req, res) => {
   try {
-    const makes = await Car.distinct("make");
+    const makes = await Car.distinct("make", { isDeleted: { $ne: true } });
     res.json({ data: makes });
   } catch (err) {
     console.error("getDistinctMakes error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// GET distinct models, optionally filtered by make
+router.get("/models/distinct", getModels);
 
 // GET car by ID
 router.get("/:id", getCarById);

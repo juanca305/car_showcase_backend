@@ -15,6 +15,11 @@ const CarSchema = new mongoose.Schema(
   {
     make: { type: String, required: true, index: true },
     model: { type: String, required: true },
+    category: {
+      type: String,
+      enum: ["SUV", "Sedan", "Hatchback", "Pickup", "Minivan", "Coupe", "Convertible", "Luxury", "Electric", "Sports Car"], // optional
+      default: "Unknown",
+    },
     trim: String,
     year: Number,
     color: String,
@@ -29,12 +34,13 @@ const CarSchema = new mongoose.Schema(
     available: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
-    createdAt: { type: Date, default: Date.now },
+    //createdAt: { type: Date, default: Date.now },
     slug: { type: String, index: true },
   },
   {
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
+    timestamps: true,
   }
 );
 

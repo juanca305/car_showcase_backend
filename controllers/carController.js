@@ -20,8 +20,9 @@ function parsePositiveInt(val, fallback) {
 
 /**
  * GET /api/cars
- * Supports: page, limit, make, fuelType, transmission, priceMin, priceMax, year, sort
+ * Supports: page, limit, make, model, fuelType, transmission, priceMin, priceMax, year, seats, category, sort
  */
+
 export const getCars = async (req, res) => {
   try {
     const page = parsePositiveInt(req.query.page, 1);
@@ -29,8 +30,17 @@ export const getCars = async (req, res) => {
     const limit = Math.min(rawLimit, 100); // cap limit
     const skip = (page - 1) * limit;
 
-    const { make, fuelType, transmission, priceMin, priceMax, year, sort } =
-      req.query;
+    const {
+      make,
+      fuelType,
+      transmission,
+      priceMin,
+      priceMax,
+      year,
+      seats,
+      category,
+      sort,
+    } = req.query;
 
     const query = {};
 
@@ -60,8 +70,17 @@ export const getCars = async (req, res) => {
       query.transmission = { $regex: new RegExp(safeTrans, "i") };
     }
 
+    if (category) {
+      const safeCategory = escapeRegex(String(category));
+      query.category = { $regex: new RegExp(safeCategory, "i") };
+    }
+
     const y = Number(year);
     if (!Number.isNaN(y)) query.year = y;
+
+    // Seats filter
+    const s = Number(seats);
+    if (!Number.isNaN(s)) query.seats = s;
 
     if (priceMin || priceMax) {
       query.pricePerDay = {};
@@ -116,6 +135,27 @@ export const getCarById = async (req, res) => {
     return res.json({ data: car });
   } catch (err) {
     console.error("getCarById error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// GET /api/models?make=Toyota
+export const getModels = async (req, res) => {
+  try {
+    const { make } = req.query;
+
+    const query = { isDeleted: { $ne: true } };
+    if (make) {
+      const safeMake = escapeRegex(String(make));
+      query.make = { $regex: new RegExp(safeMake, "i") };
+    }
+
+    // Get distinct models
+    const models = await Car.distinct("model", query);
+
+    return res.json({ data: models });
+  } catch (err) {
+    console.error("getModels error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
