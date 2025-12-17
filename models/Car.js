@@ -17,7 +17,18 @@ const CarSchema = new mongoose.Schema(
     model: { type: String, required: true },
     category: {
       type: String,
-      enum: ["SUV", "Sedan", "Hatchback", "Pickup", "Minivan", "Coupe", "Convertible", "Luxury", "Electric", "Sports Car"], // optional
+      enum: [
+        "SUV",
+        "Sedan",
+        "Hatchback",
+        "Pickup",
+        "Minivan",
+        "Coupe",
+        "Convertible",
+        "Luxury",
+        "Electric",
+        "Sports Car",
+      ], // optional
       default: "Unknown",
     },
     trim: String,
@@ -36,6 +47,13 @@ const CarSchema = new mongoose.Schema(
     deletedAt: { type: Date, default: null },
     //createdAt: { type: Date, default: Date.now },
     slug: { type: String, index: true },
+    location: {
+      branch: {
+        type: String,
+        required: true,
+        index: true,
+      },
+    },
   },
   {
     toJSON: { virtuals: true },

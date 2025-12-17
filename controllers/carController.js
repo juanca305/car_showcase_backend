@@ -40,6 +40,7 @@ export const getCars = async (req, res) => {
       seats,
       category,
       sort,
+      branch,
     } = req.query;
 
     const query = {};
@@ -57,9 +58,6 @@ export const getCars = async (req, res) => {
       const safeModel = escapeRegex(String(req.query.model));
       query.model = { $regex: new RegExp(safeModel, "i") };
     }
-
-    // if (fuelType) query.fuelType = String(fuelType);
-    // if (transmission) query.transmission = String(transmission);
 
     if (fuelType) {
       const safeFuel = escapeRegex(String(fuelType));
@@ -89,6 +87,17 @@ export const getCars = async (req, res) => {
       if (!Number.isNaN(pMin)) query.pricePerDay.$gte = pMin;
       if (!Number.isNaN(pMax)) query.pricePerDay.$lte = pMax;
       if (Object.keys(query.pricePerDay).length === 0) delete query.pricePerDay;
+    }
+
+    // if (branch) {
+    //   const safeBranch = escapeRegex(String(branch));
+    //   query["location.branch"] = { $regex: new RegExp(safeBranch, "i") };
+    // }
+
+    if (branch) {
+      const decodedBranch = decodeURIComponent(branch);
+      const safeBranch = escapeRegex(decodedBranch);
+      query["location.branch"] = { $regex: new RegExp(safeBranch, "i") };
     }
 
     // sorting: ?sort=pricePerDay:asc  or sort=year:desc
