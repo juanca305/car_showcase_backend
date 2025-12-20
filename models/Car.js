@@ -54,6 +54,19 @@ const CarSchema = new mongoose.Schema(
         index: true,
       },
     },
+
+    condition: {
+      type: String,
+      enum: ["new", "used"],
+      required: true,
+      index: true,
+    },
+
+    certified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     toJSON: { virtuals: true },

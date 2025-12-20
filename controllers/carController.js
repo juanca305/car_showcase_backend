@@ -39,8 +39,9 @@ export const getCars = async (req, res) => {
       year,
       seats,
       category,
-      sort,
       branch,
+      condition,
+      sort,
     } = req.query;
 
     const query = {};
@@ -89,15 +90,15 @@ export const getCars = async (req, res) => {
       if (Object.keys(query.pricePerDay).length === 0) delete query.pricePerDay;
     }
 
-    // if (branch) {
-    //   const safeBranch = escapeRegex(String(branch));
-    //   query["location.branch"] = { $regex: new RegExp(safeBranch, "i") };
-    // }
-
     if (branch) {
       const decodedBranch = decodeURIComponent(branch);
       const safeBranch = escapeRegex(decodedBranch);
       query["location.branch"] = { $regex: new RegExp(safeBranch, "i") };
+    }
+
+    if (condition) {
+      const safeCondition = escapeRegex(String(condition));
+      query.condition = { $regex: new RegExp(`^${safeCondition}$`, "i") };
     }
 
     // sorting: ?sort=pricePerDay:asc  or sort=year:desc
@@ -106,6 +107,9 @@ export const getCars = async (req, res) => {
       const [field, order] = String(sort).split(":");
       if (field) sortObj = { [field]: order === "desc" ? -1 : 1 };
     }
+
+    // DEBUG — log final MongoDB query
+    console.log("🔍 Final MongoDB query:", JSON.stringify(query, null, 2));
 
     const [cars, total] = await Promise.all([
       Car.find(query)
@@ -116,6 +120,8 @@ export const getCars = async (req, res) => {
         .select("-__v"),
       Car.countDocuments(query),
     ]);
+
+    console.log(`📊 Cars returned: ${cars.length} / Total matching: ${total}`);
 
     return res.json({
       data: cars,
