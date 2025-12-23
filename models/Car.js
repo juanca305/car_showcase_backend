@@ -38,7 +38,12 @@ const CarSchema = new mongoose.Schema(
     fuelType: String,
     transmission: String,
     mileage: Number,
-    pricePerDay: { type: Number, required: true },
+    pricePerDay: { type: Number, required: true }, // legacy (to be deprecated)
+    price: {
+      type: Number,
+      required: true, // dealership price
+      index: true,
+    },
     images: [ImageSchema], // <- structured images
     description: String,
     features: [String],

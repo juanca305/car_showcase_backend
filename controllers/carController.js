@@ -81,13 +81,24 @@ export const getCars = async (req, res) => {
     const s = Number(seats);
     if (!Number.isNaN(s)) query.seats = s;
 
+    // if (priceMin || priceMax) {
+    //   query.pricePerDay = {};
+    //   const pMin = Number(priceMin);
+    //   const pMax = Number(priceMax);
+    //   if (!Number.isNaN(pMin)) query.pricePerDay.$gte = pMin;
+    //   if (!Number.isNaN(pMax)) query.pricePerDay.$lte = pMax;
+    //   if (Object.keys(query.pricePerDay).length === 0) delete query.pricePerDay;
+    // }
+
     if (priceMin || priceMax) {
-      query.pricePerDay = {};
+      query.price = {}; // ✅ sale price
       const pMin = Number(priceMin);
       const pMax = Number(priceMax);
-      if (!Number.isNaN(pMin)) query.pricePerDay.$gte = pMin;
-      if (!Number.isNaN(pMax)) query.pricePerDay.$lte = pMax;
-      if (Object.keys(query.pricePerDay).length === 0) delete query.pricePerDay;
+
+      if (!Number.isNaN(pMin)) query.price.$gte = pMin;
+      if (!Number.isNaN(pMax)) query.price.$lte = pMax;
+
+      if (Object.keys(query.price).length === 0) delete query.price;
     }
 
     if (branch) {

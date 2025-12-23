@@ -18,6 +18,12 @@ dotenv.config();
 const IMAGES_DIR = path.join(process.cwd(), "scripts", "images");
 const ALLOWED_ANGLES = ["main", "front", "rear", "roof"];
 
+function getSalePrice(pricePerDay, condition) {
+  if (!pricePerDay) return 0;
+
+  return condition === "new" ? pricePerDay * 400 : pricePerDay * 300;
+}
+
 function getDefaultLocation() {
   return {
     branch: "West Kendall",
@@ -233,6 +239,26 @@ async function seed() {
     await mongoose.connect(process.env.MONGO_URI, {});
     console.log("Connected.");
 
+    console.log("Backfilling sale price for legacy cars...");
+
+    const legacyPriceCars = await Car.find({
+      price: { $exists: false },
+    });
+
+    for (const car of legacyPriceCars) {
+      const condition = car.condition || getConditionFromYear(car.year);
+      const price = getSalePrice(car.pricePerDay, condition);
+
+      await Car.updateOne(
+        { _id: car._id },
+        {
+          $set: { price },
+        }
+      );
+    }
+
+    console.log(`✔ Backfilled price for ${legacyPriceCars.length} cars`);
+
     console.log("Backfilling condition & certified for legacy cars...");
 
     const legacyCars = await Car.find({
@@ -318,6 +344,8 @@ async function seed() {
       const images = await uploadImagesForFolder(folderName);
       const condition = getConditionFromYear(car.year);
       const certified = getCertifiedFlag(condition);
+      const price = getSalePrice(car.pricePerDay, condition);
+
       const doc = {
         ...car,
         images,
@@ -325,6 +353,7 @@ async function seed() {
         location: getDefaultLocation(),
         condition,
         certified,
+        price,
       };
 
       const created = await Car.create(doc);
