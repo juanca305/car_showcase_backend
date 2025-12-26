@@ -113,10 +113,38 @@ export const getCars = async (req, res) => {
     }
 
     // sorting: ?sort=pricePerDay:asc  or sort=year:desc
-    let sortObj = { createdAt: -1 }; // default newest first
+    // let sortObj = { createdAt: -1 }; // default newest first
+    // if (sort) {
+    //   const [field, order] = String(sort).split(":");
+    //   if (field) sortObj = { [field]: order === "desc" ? -1 : 1 };
+    // }
+
+    
+    // -------------------- SORTING --------------------
+    let sortObj = { createdAt: -1 }; // default: newest first
+
     if (sort) {
-      const [field, order] = String(sort).split(":");
-      if (field) sortObj = { [field]: order === "desc" ? -1 : 1 };
+      switch (sort) {
+        case "price-asc":
+          sortObj = { price: 1 };
+          break;
+
+        case "price-desc":
+          sortObj = { price: -1 };
+          break;
+
+        case "year-asc":
+          sortObj = { year: 1 };
+          break;
+
+        case "year-desc":
+          sortObj = { year: -1 };
+          break;
+
+        default:
+          // unknown sort → keep default
+          sortObj = { createdAt: -1 };
+      }
     }
 
     // DEBUG — log final MongoDB query
@@ -235,22 +263,6 @@ export const updateCar = async (req, res) => {
     return res.status(400).json({ message: err.message });
   }
 };
-
-// export const deleteCar = async (req, res) => {
-//   try {
-//     const id = req.params.id;
-//     if (!mongoose.isValidObjectId(id))
-//       return res.status(400).json({ message: "Invalid id" });
-
-//     const car = await Car.findByIdAndDelete(id);
-//     if (!car) return res.status(404).json({ message: "Car not found" });
-
-//     return res.json({ message: "Deleted" });
-//   } catch (err) {
-//     console.error("deleteCar error:", err);
-//     return res.status(500).json({ message: "Server error" });
-//   }
-// };
 
 // Soft delete (previously deleteCar)
 export const deleteCar = async (req, res) => {
