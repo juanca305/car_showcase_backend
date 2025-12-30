@@ -42,6 +42,9 @@ export const getCars = async (req, res) => {
       branch,
       condition,
       sort,
+
+      mileageMin,
+      mileageMax,
     } = req.query;
 
     const query = {};
@@ -99,6 +102,18 @@ export const getCars = async (req, res) => {
       if (!Number.isNaN(pMax)) query.price.$lte = pMax;
 
       if (Object.keys(query.price).length === 0) delete query.price;
+    }
+
+        // ✅ NEW: mileage range filter
+    if (mileageMin || mileageMax) {
+      query.mileage = {};
+      const mMin = Number(mileageMin);
+      const mMax = Number(mileageMax);
+
+      if (!Number.isNaN(mMin)) query.mileage.$gte = mMin;
+      if (!Number.isNaN(mMax)) query.mileage.$lte = mMax;
+
+      if (Object.keys(query.mileage).length === 0) delete query.mileage;
     }
 
     if (branch) {
