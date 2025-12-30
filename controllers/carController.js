@@ -36,13 +36,13 @@ export const getCars = async (req, res) => {
       transmission,
       priceMin,
       priceMax,
-      year,
+      yearMin,
+      yearMax,
       seats,
       category,
       branch,
       condition,
       sort,
-
       mileageMin,
       mileageMax,
     } = req.query;
@@ -71,28 +71,32 @@ export const getCars = async (req, res) => {
       const safeTrans = escapeRegex(String(transmission));
       query.transmission = { $regex: new RegExp(safeTrans, "i") };
     }
-
     if (category) {
       const safeCategory = escapeRegex(String(category));
       query.category = { $regex: new RegExp(safeCategory, "i") };
     }
 
-    const y = Number(year);
-    if (!Number.isNaN(y)) query.year = y;
+    // const y = Number(year);
+    // if (!Number.isNaN(y)) query.year = y;
 
     // Seats filter
     const s = Number(seats);
     if (!Number.isNaN(s)) query.seats = s;
 
-    // if (priceMin || priceMax) {
-    //   query.pricePerDay = {};
-    //   const pMin = Number(priceMin);
-    //   const pMax = Number(priceMax);
-    //   if (!Number.isNaN(pMin)) query.pricePerDay.$gte = pMin;
-    //   if (!Number.isNaN(pMax)) query.pricePerDay.$lte = pMax;
-    //   if (Object.keys(query.pricePerDay).length === 0) delete query.pricePerDay;
-    // }
+    // Year Filter
+    if (yearMin || yearMax) {
+      query.year = {}; 
 
+      const yMin = Number(yearMin);
+      const yMax = Number(yearMax);
+
+      if (!Number.isNaN(yMin)) query.year.$gte = yMin;
+      if (!Number.isNaN(yMax)) query.year.$lte = yMax;
+
+      if (Object.keys(query.year).length === 0) delete query.year;
+    }
+
+    // Price Range filter
     if (priceMin || priceMax) {
       query.price = {}; // ✅ sale price
       const pMin = Number(priceMin);
