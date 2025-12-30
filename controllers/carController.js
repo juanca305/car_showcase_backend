@@ -104,7 +104,7 @@ export const getCars = async (req, res) => {
       if (Object.keys(query.price).length === 0) delete query.price;
     }
 
-        // ✅ NEW: mileage range filter
+    // ✅ NEW: mileage range filter
     if (mileageMin || mileageMax) {
       query.mileage = {};
       const mMin = Number(mileageMin);
@@ -134,7 +134,6 @@ export const getCars = async (req, res) => {
     //   if (field) sortObj = { [field]: order === "desc" ? -1 : 1 };
     // }
 
-    
     // -------------------- SORTING --------------------
     let sortObj = { createdAt: -1 }; // default: newest first
 
@@ -154,6 +153,14 @@ export const getCars = async (req, res) => {
 
         case "year-desc":
           sortObj = { year: -1 };
+          break;
+
+        case "mileage-asc":
+          sortObj = { mileage: 1 };
+          break;
+
+        case "mileage-desc":
+          sortObj = { mileage: -1 };
           break;
 
         default:
