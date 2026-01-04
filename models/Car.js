@@ -72,6 +72,13 @@ const CarSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+
+    drivetrain: {
+      type: String,
+      enum: ["FWD", "RWD", "AWD", "4WD"],
+      required: false,
+      trim: true,
+    },
   },
   {
     toJSON: { virtuals: true },
