@@ -52,6 +52,11 @@ export const getCars = async (req, res) => {
     //Only return cars where isDeleted is not equal to true
     query.isDeleted = { $ne: true };
 
+    // 🔹 SLUG FILTER (for Car Details page)
+    if (req.query.slug) {
+      query.slug = String(req.query.slug);
+    }
+
     if (make) {
       // sanitize user input before using in RegExp
       const safe = escapeRegex(String(make));
@@ -85,7 +90,7 @@ export const getCars = async (req, res) => {
 
     // Year Filter
     if (yearMin || yearMax) {
-      query.year = {}; 
+      query.year = {};
 
       const yMin = Number(yearMin);
       const yMax = Number(yearMax);
