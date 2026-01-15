@@ -47,10 +47,25 @@ export const getCars = async (req, res) => {
       mileageMax,
     } = req.query;
 
-    const query = {};
+    const includeDeleted = req.query.includeDeleted === "true";
 
-    //Only return cars where isDeleted is not equal to true
-    query.isDeleted = { $ne: true };
+    const onlyDeleted = req.query.onlyDeleted === "true";
+    const onlyActive = req.query.onlyActive === "true";
+
+    const query = includeDeleted ? {} : { isDeleted: false };
+
+    // if (!includeDeleted) {
+    //   query.isDeleted = { $ne: true };
+    // }
+
+    // ✅ Override deletion filtering
+    if (onlyDeleted) {
+      query.isDeleted = true;
+    } else if (onlyActive) {
+      query.isDeleted = { $ne: true };
+    } else if (!includeDeleted) {
+      query.isDeleted = { $ne: true };
+    }
 
     // 🔹 SLUG FILTER (for Car Details page)
     if (req.query.slug) {
@@ -80,9 +95,6 @@ export const getCars = async (req, res) => {
       const safeCategory = escapeRegex(String(category));
       query.category = { $regex: new RegExp(safeCategory, "i") };
     }
-
-    // const y = Number(year);
-    // if (!Number.isNaN(y)) query.year = y;
 
     // Seats filter
     const s = Number(seats);
@@ -181,13 +193,12 @@ export const getCars = async (req, res) => {
     // DEBUG — log final MongoDB query
     console.log("🔍 Final MongoDB query:", JSON.stringify(query, null, 2));
 
+    console.log("includeDeleted raw:", req.query.includeDeleted);
+    console.log("Mongo query object:", query);
+
     const [cars, total] = await Promise.all([
-      Car.find(query)
-        .sort(sortObj)
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .select("-__v"),
+      Car.find(query).sort(sortObj).skip(skip).limit(limit).lean(),
+      // .select("-__v"),
       Car.countDocuments(query),
     ]);
 
@@ -325,27 +336,34 @@ export const deleteCar = async (req, res) => {
   }
 };
 
-// Restore a car market as soft-deleted but still existing.
 export const restoreCar = async (req, res) => {
   try {
     const id = req.params.id;
-    if (!mongoose.isValidObjectId(id))
+
+    if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid id" });
+    }
 
-    //const car = await Car.findById(id);
-    // includeDeleted: true -> triggers pre-find hook to skip adding { isDeleted: false }
-    const car = await Car.findOne({ _id: id, includeDeleted: true });
+    // ✅ FIND BY ID ONLY
+    const car = await Car.findById(id);
 
-    if (!car) return res.status(404).json({ message: "Car not found" });
+    if (!car) {
+      return res.status(404).json({ message: "Car not found" });
+    }
+
     if (!car.isDeleted) {
       return res.status(400).json({ message: "Car is not deleted" });
     }
 
+    // ✅ RESTORE
     car.isDeleted = false;
     car.deletedAt = null;
     await car.save();
 
-    return res.status(200).json({ message: "Car restored", data: car });
+    return res.status(200).json({
+      message: "Car restored successfully",
+      data: car,
+    });
   } catch (err) {
     console.error("restoreCar error:", err);
     return res.status(500).json({ message: "Server error" });
@@ -358,12 +376,14 @@ export const permanentDeleteCar = async (req, res) => {
     const id = req.params.id;
     if (!mongoose.isValidObjectId(id))
       return res.status(400).json({ message: "Invalid id" });
-
-    //const car = await Car.findById(id);
-    const car = await Car.findOne({ _id: id, includeDeleted: true });
-
+    const car = await Car.findById(id);
     if (!car) return res.status(404).json({ message: "Car not found" });
-
+    if (!car.isDeleted) {
+      return res.status(400).json({
+        message: "Car must be soft-deleted before permanent deletion",
+      });
+    }
+    
     // delete images from Cloudinary (best-effort)
     if (car.images && car.images.length) {
       for (const img of car.images) {
@@ -375,10 +395,7 @@ export const permanentDeleteCar = async (req, res) => {
         }
       }
     }
-
-    //await Car.findByIdAndDelete(id);
     await Car.deleteOne({ _id: id });
-
     return res.status(200).json({ message: "Car permanently deleted" });
   } catch (err) {
     console.error("permanentDeleteCar error:", err);

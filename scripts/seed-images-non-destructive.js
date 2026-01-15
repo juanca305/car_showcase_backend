@@ -308,6 +308,22 @@ const sampleCars = [
     slug: "lincoln-nautilus-2025",
     drivetrain: "4WD",
   },
+
+  {
+    make: "Test Car",
+    model: "DeleteForever",
+    year: 2025,
+    color: "Burgundi",
+    seats: 5,
+    fuelType: "Gasoline",
+    transmission: "Automatic",
+    pricePerDay: 99,
+    features: ["Bluetooth", "Air Conditioning"],
+    category: "SUV",
+    slug: "test-deleteforever-2025",
+    drivetrain: "4WD",
+  },
+
 ];
 
 // Upload images from local folder to Cloudinary

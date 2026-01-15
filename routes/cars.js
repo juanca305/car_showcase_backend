@@ -45,12 +45,15 @@ router.post("/", adminAuth, createCar);
 router.put("/:id", adminAuth, updateCar);
 
 // Restore a soft-deleted car
-router.put("/:id/restore", adminAuth, restoreCar);
+//router.put("/:id/restore", adminAuth, restoreCar);
+router.put("/:id/restore", restoreCar); 
 
 // Permanently delete a car (irreversible)
-router.delete("/:id/permanent", adminAuth, permanentDeleteCar);
+//router.delete("/:id/permanent", adminAuth, permanentDeleteCar);
+router.delete("/:id/permanent", permanentDeleteCar);
 
-router.delete("/:id", adminAuth, deleteCar);
+//router.delete("/:id", adminAuth, deleteCar);
+router.delete("/:id", deleteCar);
 
 // Replace a specific image
 router.put("/:id/images/:imageId", adminAuth, upload.single("image"), replaceCarImage);

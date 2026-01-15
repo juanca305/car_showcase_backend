@@ -88,13 +88,13 @@ const CarSchema = new mongoose.Schema(
 );
 
 // Automatically exclude soft-deleted cars from queries unless explicitly included
-CarSchema.pre(/^find/, function (next) {
-  if (!this.getQuery().includeDeleted) {
-    this.where({ isDeleted: false });
-  } else {
-    delete this.getQuery().includeDeleted;
-  }
-  next();
-});
+// CarSchema.pre(/^find/, function (next) {
+//   if (!this.getQuery().includeDeleted) {
+//     this.where({ isDeleted: false });
+//   } else {
+//     delete this.getQuery().includeDeleted;
+//   }
+//   next();
+// });
 
 export default mongoose.models.Car || mongoose.model("Car", CarSchema);
