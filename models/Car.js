@@ -2,14 +2,18 @@
 
 import mongoose from "mongoose";
 
-const ImageSchema = new mongoose.Schema({
-  url: { type: String, required: true },
-  angle: {
-    type: String,
-    enum: ["main", "front", "rear", "roof"],
-    default: "main",
+const ImageSchema = new mongoose.Schema(
+  {
+    url: { type: String, required: true },
+    publicId: { type: String, index: true }, // ✅ NEW (not required for backward compatibility)
+    angle: {
+      type: String,
+      enum: ["main", "front", "rear", "roof"],
+      default: "main",
+    },
   },
-});
+  { _id: true } // optional; default is true anyway, but explicit is fine
+);
 
 const CarSchema = new mongoose.Schema(
   {

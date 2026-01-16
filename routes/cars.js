@@ -43,7 +43,7 @@ router.get("/:id", getCarById);
 // CRUD operations
 router.post("/", adminAuth, createCar);
 router.put("/:id", adminAuth, updateCar);
-
+//
 // Restore a soft-deleted car
 //router.put("/:id/restore", adminAuth, restoreCar);
 router.put("/:id/restore", restoreCar); 

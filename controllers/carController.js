@@ -6,6 +6,16 @@ import fs from "fs";
 
 const allowedAngles = ["main", "front", "rear", "roof"];
 
+function getCloudinaryPublicId(url = "") {
+  const afterUpload = url.split("/upload/")[1];
+  if (!afterUpload) return null;
+
+  const noExt = afterUpload.replace(/\.[^/.]+$/, "");
+  const publicId = noExt.replace(/^v\d+\//, "");
+
+  return publicId || null;
+}
+
 // Sanitize make before building a RegExp. Prevents RegExp injection / crashes if user passes special characters.
 function escapeRegex(str = "") {
   // escape special chars for RegExp
@@ -371,31 +381,78 @@ export const restoreCar = async (req, res) => {
 };
 
 // actually removes the DB record and optionally deletes Cloudinary images (useful for admins).
+// export const permanentDeleteCar = async (req, res) => {
+//   try {
+//     const id = req.params.id;
+//     if (!mongoose.isValidObjectId(id))
+//       return res.status(400).json({ message: "Invalid id" });
+//     const car = await Car.findById(id);
+//     if (!car) return res.status(404).json({ message: "Car not found" });
+//     if (!car.isDeleted) {
+//       return res.status(400).json({
+//         message: "Car must be soft-deleted before permanent deletion",
+//       });
+//     }
+
+//     // delete images from Cloudinary (best-effort)
+//     if (car.images && car.images.length) {
+//       for (const img of car.images) {
+//         try {
+//           const publicId = img.url.split("/upload/")[1]?.split(".")[0];
+//           if (publicId) await cloudinary.uploader.destroy(publicId);
+//         } catch (e) {
+//           console.warn("Failed deleting cloud image:", e?.message || e);
+//         }
+//       }
+//     }
+//     await Car.deleteOne({ _id: id });
+//     return res.status(200).json({ message: "Car permanently deleted" });
+//   } catch (err) {
+//     console.error("permanentDeleteCar error:", err);
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 export const permanentDeleteCar = async (req, res) => {
   try {
-    const id = req.params.id;
-    if (!mongoose.isValidObjectId(id))
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid id" });
+    }
+
     const car = await Car.findById(id);
-    if (!car) return res.status(404).json({ message: "Car not found" });
+    if (!car) {
+      return res.status(404).json({ message: "Car not found" });
+    }
+
     if (!car.isDeleted) {
       return res.status(400).json({
         message: "Car must be soft-deleted before permanent deletion",
       });
     }
-    
-    // delete images from Cloudinary (best-effort)
-    if (car.images && car.images.length) {
+
+    // ✅ delete images from Cloudinary (best-effort)
+    if (car.images?.length) {
       for (const img of car.images) {
         try {
-          const publicId = img.url.split("/upload/")[1]?.split(".")[0];
-          if (publicId) await cloudinary.uploader.destroy(publicId);
+          // const afterUpload = img.url.split("/upload/")[1];
+          // if (!afterUpload) continue;
+
+          // const noExt = afterUpload.replace(/\.[^/.]+$/, "");
+
+          const publicId = getCloudinaryPublicId(img.url);
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId);
+          }
         } catch (e) {
           console.warn("Failed deleting cloud image:", e?.message || e);
         }
       }
     }
+
     await Car.deleteOne({ _id: id });
+
     return res.status(200).json({ message: "Car permanently deleted" });
   } catch (err) {
     console.error("permanentDeleteCar error:", err);
@@ -428,9 +485,7 @@ export const uploadImage = async (req, res) => {
     const car = await Car.findByIdAndUpdate(
       req.params.id,
       {
-        $push: {
-          images: { url: uploaded.secure_url, angle },
-        },
+       $push: { images: { url: uploaded.secure_url, angle, publicId: uploaded.public_id } }
       },
       { new: true, runValidators: true }
     ).lean();
@@ -491,7 +546,7 @@ export const uploadMultipleImages = async (req, res) => {
         overwrite: true,
       });
 
-      uploadedImages.push({ url: upload.secure_url, angle });
+      uploadedImages.push({ url: upload.secure_url, angle, publicId: upload.public_id });
 
       // delete temp file after each upload
       try {
@@ -538,7 +593,9 @@ export const deleteCarImage = async (req, res) => {
 
     // ✅ Step 4: Extract Cloudinary public_id dynamically
     const imageUrl = imageToDelete.url;
-    const publicId = imageUrl.split("/upload/")[1]?.split(".")[0];
+    // const publicId = imageUrl.split("/upload/")[1]?.split(".")[0];
+    const publicId = imageToDelete.publicId || getCloudinaryPublicId(imageToDelete.url);
+
 
     if (publicId) {
       try {
@@ -586,7 +643,9 @@ export const replaceCarImage = async (req, res) => {
 
     // ✅ Delete old image from Cloudinary
     const oldUrl = imageToReplace.url;
-    const publicId = oldUrl.split("/upload/")[1]?.split(".")[0];
+    // const publicId = oldUrl.split("/upload/")[1]?.split(".")[0];
+    const publicId = imageToReplace.publicId || getCloudinaryPublicId(oldUrl);
+
     if (publicId) {
       try {
         await cloudinary.uploader.destroy(publicId);
