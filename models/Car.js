@@ -32,6 +32,7 @@ const CarSchema = new mongoose.Schema(
         "Luxury",
         "Electric",
         "Sports Car",
+        "Unknown",
       ], // optional
       default: "Unknown",
     },
@@ -42,7 +43,7 @@ const CarSchema = new mongoose.Schema(
     fuelType: String,
     transmission: String,
     mileage: Number,
-    pricePerDay: { type: Number, required: true }, // legacy (to be deprecated)
+    pricePerDay: { type: Number, required: false }, // legacy (to be deprecated)
     price: {
       type: Number,
       required: true, // dealership price
@@ -90,15 +91,5 @@ const CarSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// Automatically exclude soft-deleted cars from queries unless explicitly included
-// CarSchema.pre(/^find/, function (next) {
-//   if (!this.getQuery().includeDeleted) {
-//     this.where({ isDeleted: false });
-//   } else {
-//     delete this.getQuery().includeDeleted;
-//   }
-//   next();
-// });
 
 export default mongoose.models.Car || mongoose.model("Car", CarSchema);

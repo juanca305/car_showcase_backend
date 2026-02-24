@@ -64,9 +64,11 @@ export const getCars = async (req, res) => {
 
     const query = includeDeleted ? {} : { isDeleted: false };
 
-    // if (!includeDeleted) {
-    //   query.isDeleted = { $ne: true };
-    // }
+    const includeHidden = req.query.includeHidden === "true";
+
+    if (!includeHidden) {
+      query.available = true;
+    }
 
     // ✅ Override deletion filtering
     if (onlyDeleted) {
@@ -157,13 +159,6 @@ export const getCars = async (req, res) => {
       const safeCondition = escapeRegex(String(condition));
       query.condition = { $regex: new RegExp(`^${safeCondition}$`, "i") };
     }
-
-    // sorting: ?sort=pricePerDay:asc  or sort=year:desc
-    // let sortObj = { createdAt: -1 }; // default newest first
-    // if (sort) {
-    //   const [field, order] = String(sort).split(":");
-    //   if (field) sortObj = { [field]: order === "desc" ? -1 : 1 };
-    // }
 
     // -------------------- SORTING --------------------
     let sortObj = { createdAt: -1 }; // default: newest first
@@ -268,26 +263,31 @@ export const getModels = async (req, res) => {
 
 export const createCar = async (req, res) => {
   try {
-    // Basic validation: require make, model, pricePerDay
-    const { make, model, pricePerDay } = req.body;
-    if (!make || !model || pricePerDay === undefined) {
+    // Basic validation: require make, model, price
+    const { make, model, price } = req.body;
+    if (!make || !model || price === undefined) {
       return res
         .status(400)
-        .json({ message: "make, model and pricePerDay are required" });
+        .json({ message: "make, model and price are required" });
     }
 
-    // Validate pricePerDay is a positive finite number
-    const priceNum = Number(pricePerDay);
+    // Validate price is a positive finite number
+    const priceNum = Number(price);
     if (!Number.isFinite(priceNum) || priceNum <= 0) {
       return res
         .status(400)
-        .json({ message: "pricePerDay must be a positive number" });
+        .json({ message: "price must be a positive number" });
     }
 
     // Optionally normalize to a fixed decimal or integer:
-    req.body.pricePerDay = Math.round(priceNum); // or parseFloat(priceNum.toFixed(2))
+    req.body.price = Math.round(priceNum); // or parseFloat(priceNum.toFixed(2))
 
-    const car = new Car(req.body);
+    //const car = new Car(req.body);
+    const car = new Car({ ...req.body,
+      available: false,
+      isDeleted: false,
+      deletedAt: null
+     });
     await car.save();
 
     return res.status(201).json({ data: car.toObject() });
@@ -380,39 +380,6 @@ export const restoreCar = async (req, res) => {
   }
 };
 
-// actually removes the DB record and optionally deletes Cloudinary images (useful for admins).
-// export const permanentDeleteCar = async (req, res) => {
-//   try {
-//     const id = req.params.id;
-//     if (!mongoose.isValidObjectId(id))
-//       return res.status(400).json({ message: "Invalid id" });
-//     const car = await Car.findById(id);
-//     if (!car) return res.status(404).json({ message: "Car not found" });
-//     if (!car.isDeleted) {
-//       return res.status(400).json({
-//         message: "Car must be soft-deleted before permanent deletion",
-//       });
-//     }
-
-//     // delete images from Cloudinary (best-effort)
-//     if (car.images && car.images.length) {
-//       for (const img of car.images) {
-//         try {
-//           const publicId = img.url.split("/upload/")[1]?.split(".")[0];
-//           if (publicId) await cloudinary.uploader.destroy(publicId);
-//         } catch (e) {
-//           console.warn("Failed deleting cloud image:", e?.message || e);
-//         }
-//       }
-//     }
-//     await Car.deleteOne({ _id: id });
-//     return res.status(200).json({ message: "Car permanently deleted" });
-//   } catch (err) {
-//     console.error("permanentDeleteCar error:", err);
-//     return res.status(500).json({ message: "Server error" });
-//   }
-// };
-
 export const permanentDeleteCar = async (req, res) => {
   try {
     const { id } = req.params;
@@ -481,13 +448,30 @@ export const uploadImage = async (req, res) => {
       resource_type: "image",
     });
 
+    // If uploading a 'main' angle, demote existing main to 'front'
+    //** LAST MOMENT CHANGE 01/29/2026 */
+    if (angle === "main") {
+      await Car.updateOne(
+        { _id: req.params.id },
+        { $set: { "images.$[img].angle": "front" } },
+        { arrayFilters: [{ "img.angle": "main" }] },
+      );
+    }
+    //** FINISH LAST MOMENT CHANGE 01/29/2026 */
+
     // push with object {url, angle}
     const car = await Car.findByIdAndUpdate(
       req.params.id,
       {
-       $push: { images: { url: uploaded.secure_url, angle, publicId: uploaded.public_id } }
+        $push: {
+          images: {
+            url: uploaded.secure_url,
+            angle,
+            publicId: uploaded.public_id,
+          },
+        },
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).lean();
 
     return res.json({ data: car });
@@ -535,6 +519,22 @@ export const uploadMultipleImages = async (req, res) => {
 
     const uploadedImages = [];
 
+    // If any uploaded image is 'main', remove existing main
+    //** LAST MOMENT CHANGE 01/29/2026 */
+    const incomingHasMain = req.files.some((file) => {
+      const raw = (file.originalname.split(".")[0] || "").toLowerCase();
+      return raw === "main";
+    });
+
+    if (incomingHasMain) {
+      car.images.forEach((img) => {
+        if (img.angle === "main") {
+          img.angle = "front"; // or "unknown" or keep previous
+        }
+      });
+    }
+    //** FINISH LAST MOMENT CHANGE 01/29/2026 */
+
     for (const file of req.files) {
       const rawAngle = (file.originalname.split(".")[0] || "").toLowerCase();
       const angle = allowedAngles.includes(rawAngle) ? rawAngle : "main";
@@ -546,7 +546,11 @@ export const uploadMultipleImages = async (req, res) => {
         overwrite: true,
       });
 
-      uploadedImages.push({ url: upload.secure_url, angle, publicId: upload.public_id });
+      uploadedImages.push({
+        url: upload.secure_url,
+        angle,
+        publicId: upload.public_id,
+      });
 
       // delete temp file after each upload
       try {
@@ -560,7 +564,7 @@ export const uploadMultipleImages = async (req, res) => {
     const updatedCar = await Car.findByIdAndUpdate(
       carId,
       { $push: { images: { $each: uploadedImages } } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).lean();
 
     return res.json({ data: updatedCar });
@@ -594,8 +598,8 @@ export const deleteCarImage = async (req, res) => {
     // ✅ Step 4: Extract Cloudinary public_id dynamically
     const imageUrl = imageToDelete.url;
     // const publicId = imageUrl.split("/upload/")[1]?.split(".")[0];
-    const publicId = imageToDelete.publicId || getCloudinaryPublicId(imageToDelete.url);
-
+    const publicId =
+      imageToDelete.publicId || getCloudinaryPublicId(imageToDelete.url);
 
     if (publicId) {
       try {
@@ -676,3 +680,93 @@ export const replaceCarImage = async (req, res) => {
     return res.status(500).json({ message: "Failed to replace image" });
   }
 };
+
+export const setCarImageAsMain = async (req, res) => {
+  try {
+    const { id: carId, imageId } = req.params;
+
+    // ✅ Validate IDs
+    if (
+      !mongoose.isValidObjectId(carId) ||
+      !mongoose.isValidObjectId(imageId)
+    ) {
+      return res.status(400).json({ message: "Invalid car or image ID" });
+    }
+
+    // ✅ Fetch car
+    const car = await Car.findById(carId);
+    if (!car) {
+      return res.status(404).json({ message: "Car not found" });
+    }
+
+    // ✅ Find target image
+    const targetImage = car.images.id(imageId);
+    if (!targetImage) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+
+    // ✅ Demote existing main
+    car.images.forEach((img) => {
+      if (img.angle === "main") {
+        img.angle = "front"; // consistent with your existing logic
+      }
+    });
+
+    // ✅ Promote selected image
+    targetImage.angle = "main";
+
+    await car.save();
+
+    return res.status(200).json({
+      message: "Main image updated",
+      data: car,
+    });
+  } catch (err) {
+    console.error("setCarImageAsMain error:", err);
+    return res.status(500).json({ message: "Failed to set main image" });
+  }
+};
+
+export const publishCar = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid car id" });
+    }
+
+    const car = await Car.findById(id);
+    if (!car) {
+      return res.status(404).json({ message: "Car not found" });
+    }
+
+    if (car.isDeleted) {
+      return res.status(400).json({ message: "Car is deleted" });
+    }
+
+    if (!car.images || car.images.length === 0) {
+      return res.status(400).json({
+        message: "Upload at least one image before publishing",
+      });
+    }
+
+    if (car.available) {
+      return res.status(200).json({
+        message: "Car already published",
+        data: car,
+      });
+    }
+
+    car.available = true;
+    await car.save();
+
+    return res.status(200).json({
+      message: "Car published successfully",
+      data: car,
+    });
+  } catch (err) {
+    console.error("publishCar error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+

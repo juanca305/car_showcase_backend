@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import carRoutes from './routes/cars.js';
 
 import adminCarsRoutes from "./routes/adminCars.js";
+import adminDashboardRoutes from "./routes/adminDashboard.js";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/cars', carRoutes);
 app.use("/api/admin/cars", adminCarsRoutes);
+app.use("/api/admin/dashboard", adminDashboardRoutes);
 
 app.get('/', (req, res) => res.send('Car Showcase API'));
 

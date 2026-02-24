@@ -1,6 +1,8 @@
 import express from "express";
 import multer from "multer";
 
+import {setCarImageAsMain} from "../controllers/carController.js";
+
 import {
   getCars,
   getCarById,
@@ -13,9 +15,11 @@ import {
   uploadMultipleImages,
   deleteCarImage,
   replaceCarImage,
+  publishCar,
 } from "../controllers/carController.js";
 
 import adminAuth from "../middleware/auth.js";
+import { toggleCarVisibility } from "../controllers/adminCarsController.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -35,6 +39,9 @@ router.delete("/:id", adminAuth, deleteCar);
 router.put("/:id/restore", adminAuth, restoreCar);
 router.delete("/:id/permanent", adminAuth, permanentDeleteCar);
 
+router.put("/:id/visibility", adminAuth, toggleCarVisibility);
+router.put("/:id/publish", adminAuth, publishCar);
+
 // ✅ Images (protected)
 router.post("/:id/images", adminAuth, upload.single("image"), uploadImage);
 router.post(
@@ -50,5 +57,15 @@ router.put(
   upload.single("image"),
   replaceCarImage
 );
+
+//** PUT /api/admin/cars/:id/images/:imageId/main */
+router.put(
+  "/:id/images/:imageId/main",
+  adminAuth,
+  setCarImageAsMain
+);
+
+
+
 
 export default router;

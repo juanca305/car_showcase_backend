@@ -11,4 +11,3 @@ export default function adminAuth(req, res, next) {
   next();
 }
 
-// Why: simple protection for create/update/delete endpoints. Later replace with proper auth (JWT + hashed passwords).

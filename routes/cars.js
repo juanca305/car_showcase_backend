@@ -40,6 +40,10 @@ router.get("/models/distinct", getModels);
 // GET car by ID
 router.get("/:id", getCarById);
 
+//**** JUST FOR TESTING WITH POSTMAN --- DELETE LATER ON!!!- **** */
+router.post("/", createCar);
+
+/*
 // CRUD operations
 router.post("/", adminAuth, createCar);
 router.put("/:id", adminAuth, updateCar);
@@ -63,7 +67,7 @@ router.post("/:id/images", adminAuth, upload.single("image"), uploadImage);
 router.post("/:id/images/multiple", adminAuth, upload.array("images", 10), uploadMultipleImages);
 
 // Delete specific image
-router.delete("/:id/images/:imageId", adminAuth, deleteCarImage);
+router.delete("/:id/images/:imageId", adminAuth, deleteCarImage); */
 
 export default router;
 
